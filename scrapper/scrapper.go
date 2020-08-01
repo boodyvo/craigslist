@@ -274,21 +274,15 @@ func (s *httpScrapper) restartTicker() {
 
 	s.Lock()
 	if len(s.tickers) == TickerNumber {
-		log.Printf("checking tickers")
+		log.Printf("checkging tickers")
 		last := int64(0)
 		lastIndex := -1
-		deleted := false
 
-		for i := len(s.tickers) - 1; i >= 0; i-- {
-			t := s.tickers[i]
+		for i, t := range s.tickers {
 			// remove all tickers that are old
 			if t.Last < s.lastIndexFound {
-				s.tickers[i].Stop()
-				s.tickers[len(s.tickers)-1], s.tickers[i] = s.tickers[i], s.tickers[len(s.tickers)-1]
-				s.tickers = s.tickers[:len(s.tickers)-1]
-
-				deleted = true
-				continue
+				lastIndex = i
+				break
 			}
 
 			if t.Last > last {
@@ -296,9 +290,8 @@ func (s *httpScrapper) restartTicker() {
 				last = t.Last
 			}
 		}
-		log.Printf("checked tickers: last = %d, lastIndex = %d deleted = %v\n", last, lastIndex, deleted)
 
-		if lastIndex != -1 && s.tickers[lastIndex] != nil && !deleted {
+		if lastIndex != -1 && s.tickers[lastIndex] != nil {
 			s.tickers[lastIndex].Stop()
 			s.tickers[len(s.tickers)-1], s.tickers[lastIndex] = s.tickers[lastIndex], s.tickers[len(s.tickers)-1]
 			s.tickers = s.tickers[:len(s.tickers)-1]

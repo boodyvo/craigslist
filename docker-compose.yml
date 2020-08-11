@@ -24,6 +24,8 @@ services:
       CRAIGSLIST_DB_DATABASE: test
       CRAIGSLIST_DB_TABLE: urls
       CRAIGSLIST_DB_FIELD_NAME: url
+      CRAIGSLIST_TELEGRAM_BOT_TOKEN: ${CRAIGSLIST_TELEGRAM_BOT_TOKEN}
+      CRAIGSLIST_TELEGRAM_CHANNEL: "@craigslistsfauto"
     command: go run main.go
 
 volumes:

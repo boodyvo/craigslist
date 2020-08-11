@@ -12,12 +12,14 @@ import (
 )
 
 type Config struct {
-	User      string `env:"CRAIGSLIST_DB_USER,required"`
-	Password  string `env:"CRAIGSLIST_DB_PASSWORD,required"`
-	Host      string `env:"CRAIGSLIST_DB_HOST,required"`
-	Database  string `env:"CRAIGSLIST_DB_DATABASE,required"`
-	Table     string `env:"CRAIGSLIST_DB_TABLE,required"`
-	FieldName string `env:"CRAIGSLIST_DB_FIELD_NAME,required"`
+	User       string   `env:"CRAIGSLIST_DB_USER,required"`
+	Password   string   `env:"CRAIGSLIST_DB_PASSWORD,required"`
+	Host       string   `env:"CRAIGSLIST_DB_HOST,required"`
+	Database   string   `env:"CRAIGSLIST_DB_DATABASE,required"`
+	Table      string   `env:"CRAIGSLIST_DB_TABLE,required"`
+	FieldName  string   `env:"CRAIGSLIST_DB_FIELD_NAME,required"`
+	TGToken    string   `env:"CRAIGSLIST_TELEGRAM_BOT_TOKEN,required"`
+	TGChannels []string `env:"CRAIGSLIST_TELEGRAM_CHANNEL,required"`
 }
 
 func main() {
@@ -26,7 +28,6 @@ func main() {
 	if err != nil {
 		log.Fatalf("cannot parse config: %s", err)
 	}
-
 	db, err := notification_manager.NewMySQL(
 		config.User,
 		config.Password,
@@ -40,11 +41,20 @@ func main() {
 	}
 	defer db.Stop()
 
+	tgbot, err := notification_manager.NewTelegram(config.TGToken, config.TGChannels)
+	if err != nil {
+		log.Fatalf("cannot create telegram bot: %s", err)
+	}
+	defer tgbot.Stop()
+
 	craigslistScrapper := scrapper.New()
 	log.Println(craigslistScrapper.GetLastIndex())
 
-	notificationChan := craigslistScrapper.SubscriptionChan()
-	db.Subscribe(notificationChan)
+	//notificationChanDB := craigslistScrapper.SubscriptionChan()
+	//db.Subscribe(notificationChanDB)
+
+	notificationChanTelegram := craigslistScrapper.SubscriptionChan()
+	tgbot.Subscribe(notificationChanTelegram)
 
 	log.Printf("finish scrapper with error: %s", craigslistScrapper.Start())
 }

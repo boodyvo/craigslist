@@ -50,8 +50,8 @@ func main() {
 	craigslistScrapper := scrapper.New()
 	log.Println(craigslistScrapper.GetLastIndex())
 
-	//notificationChanDB := craigslistScrapper.SubscriptionChan()
-	//db.Subscribe(notificationChanDB)
+	notificationChanDB := craigslistScrapper.SubscriptionChan()
+	db.Subscribe(notificationChanDB)
 
 	notificationChanTelegram := craigslistScrapper.SubscriptionChan()
 	tgbot.Subscribe(notificationChanTelegram)

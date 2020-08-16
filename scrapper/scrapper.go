@@ -21,6 +21,7 @@ const (
 	JobsNumber   = 3 * WorkerNumber
 
 	NotificationBufferSize = 10
+	MarkerSize             = 100
 
 	TickerNumber         = 4
 	RestartTickerTimeout = 2 * time.Minute
@@ -76,6 +77,9 @@ type httpScrapper struct {
 	workerWG      sync.WaitGroup
 	subscriptions []chan string
 
+	lastFoundIndexes map[string]int64
+	lastMarker       int64
+
 	lastIndexFound int64
 
 	tickers      []*ticker
@@ -86,11 +90,12 @@ type httpScrapper struct {
 
 func New() Scrapper {
 	return &httpScrapper{
-		quit:          make(chan struct{}),
-		notifications: make(chan string, NotificationBufferSize),
-		jobIndexes:    make(chan int64, JobsNumber),
-		tickers:       make([]*ticker, 0, TickerNumber),
-		subscriptions: make([]chan string, 0),
+		quit:             make(chan struct{}),
+		notifications:    make(chan string, NotificationBufferSize),
+		jobIndexes:       make(chan int64, JobsNumber),
+		tickers:          make([]*ticker, 0, TickerNumber),
+		subscriptions:    make([]chan string, 0),
+		lastFoundIndexes: make(map[string]int64, 2*MarkerSize),
 	}
 }
 
@@ -124,11 +129,29 @@ func (s *httpScrapper) watchNotifications() {
 	for {
 		select {
 		case url := <-s.notifications:
+			s.Lock()
+			// check duplicates
+			if _, ok := s.lastFoundIndexes[url]; ok {
+				s.Unlock()
+				continue
+			}
+			// fill duplicates array and fresh it
+			s.lastMarker++
+			s.lastFoundIndexes[url] = s.lastMarker
+			freshIndexes := make(map[string]int64, len(s.lastFoundIndexes))
+			for k, v := range s.lastFoundIndexes {
+				if v > s.lastMarker-MarkerSize {
+					freshIndexes[k] = v
+				}
+			}
+			s.lastFoundIndexes = freshIndexes
+
 			for _, subscriber := range s.subscriptions {
 				log.Printf("will push message to subscriber: %s", url)
 				subscriber <- url
 				log.Printf("pushed message to subscriber: %s", url)
 			}
+			s.Unlock()
 		case <-s.quit:
 			log.Printf("stop watcher")
 

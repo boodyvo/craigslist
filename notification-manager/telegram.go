@@ -1,8 +1,9 @@
 package notification_manager
 
 import (
-	"github.com/go-telegram-bot-api/telegram-bot-api"
 	"log"
+
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 )
 
 type TelegramNotificationManager struct {
@@ -18,7 +19,7 @@ func NewTelegram(token string, channels []string) (NotificationManager, error) {
 	}
 
 	return &TelegramNotificationManager{
-		bot: bot,
+		bot:      bot,
 		channels: channels,
 	}, nil
 }

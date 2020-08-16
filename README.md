@@ -30,3 +30,5 @@ To set custom MySQL connection set up env variables in docker-compose.yml:
 - `CRAIGSLIST_DB_DATABASE` - MySQL database that contains the `table`, default is `test`;
 - `CRAIGSLIST_DB_TABLE` - MySQL table, default is `urls`;
 - `CRAIGSLIST_DB_FIELD_NAME` - MySQL field name in the `table`, default is `url`;
+- `CRAIGSLIST_TELEGRAM_BOT_TOKEN` - a token for telegram bot. Should be set in the docker env.
+- `CRAIGSLIST_TELEGRAM_CHANNEL` - list of channels to push found messages to in format "@chan1,@chan2"

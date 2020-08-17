@@ -1,3 +1,4 @@
 .idea/
 vendor/
 log.txt
+t_test.go

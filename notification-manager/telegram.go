@@ -65,7 +65,7 @@ func (nm *TelegramNotificationManager) checkTime() bool {
 	}
 
 	if timeNow.Before(nm.start) {
-		return false
+		timeNow.Add(24 * time.Hour)
 	}
 
 	if timeNow.Before(nm.stop) {

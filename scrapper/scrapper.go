@@ -1,9 +1,9 @@
 package scrapper
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"strconv"
@@ -183,10 +183,10 @@ func (s *httpScrapper) GetLastIndex() (int64, error) {
 	})
 
 	c.OnHTML(".result-row", func(e *colly.HTMLElement) {
-		fmt.Println("found something on the page")
+		//fmt.Println("found something on the page")
 		curIndexStr := e.Attr("data-pid")
 		curIndex, err := strconv.ParseInt(curIndexStr, 10, 64)
-		fmt.Println("curIndex", curIndex, index, err)
+		//fmt.Println("curIndex", curIndex, index, err)
 		if err != nil {
 			return
 		}
@@ -219,9 +219,15 @@ func (s *httpScrapper) GetLastIndex() (int64, error) {
 		go func(wg *sync.WaitGroup, url string) {
 			defer wg.Done()
 
-			data, err := http.Get(url)
-			js, _ := json.Marshal(data)
-			fmt.Println("found some data for url", url, err, string(js))
+			resp, err := http.Get(url)
+			defer resp.Body.Close()
+			// reads html as a slice of bytes
+			html, err := ioutil.ReadAll(resp.Body)
+			if err != nil {
+				panic(err)
+			}
+			// show the HTML code as a string %s
+			fmt.Printf("got html: %s\n", html)
 
 			err = c.Visit(url)
 			if err != nil {

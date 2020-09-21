@@ -177,6 +177,10 @@ func (s *httpScrapper) GetLastIndex() (int64, error) {
 	var index int64
 	c := colly.NewCollector()
 
+	c.OnHTML("body", func(e *colly.HTMLElement) {
+		fmt.Println("got some html")
+	})
+
 	c.OnHTML(".result-row", func(e *colly.HTMLElement) {
 		fmt.Println("found something on the page")
 		curIndexStr := e.Attr("data-pid")

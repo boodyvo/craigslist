@@ -1,6 +1,7 @@
 package scrapper
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -218,7 +219,11 @@ func (s *httpScrapper) GetLastIndex() (int64, error) {
 		go func(wg *sync.WaitGroup, url string) {
 			defer wg.Done()
 
-			err := c.Visit(url)
+			data, err := http.Get(url)
+			js, _ := json.Marshal(data)
+			fmt.Println("found some data for url", url, err, string(js))
+
+			err = c.Visit(url)
 			if err != nil {
 				return
 			}

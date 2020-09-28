@@ -3,13 +3,13 @@ package scrapper
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
+	netURL "net/url"
 
 	"github.com/gocolly/colly/v2"
 )
@@ -178,15 +178,9 @@ func (s *httpScrapper) GetLastIndex() (int64, error) {
 	var index int64
 	c := colly.NewCollector()
 
-	c.OnHTML("body", func(e *colly.HTMLElement) {
-		fmt.Println("got some html")
-	})
-
 	c.OnHTML(".result-row", func(e *colly.HTMLElement) {
-		//fmt.Println("found something on the page")
 		curIndexStr := e.Attr("data-pid")
 		curIndex, err := strconv.ParseInt(curIndexStr, 10, 64)
-		//fmt.Println("curIndex", curIndex, index, err)
 		if err != nil {
 			return
 		}
@@ -219,18 +213,7 @@ func (s *httpScrapper) GetLastIndex() (int64, error) {
 		go func(wg *sync.WaitGroup, url string) {
 			defer wg.Done()
 
-			resp, err := http.Get(url)
-			defer resp.Body.Close()
-			// reads html as a slice of bytes
-			html, err := ioutil.ReadAll(resp.Body)
-			if err != nil {
-				panic(err)
-			}
-			// show the HTML code as a string %s
-			fmt.Printf("got html: %s\n", html)
-
-			err = c.Visit(url)
-			if err != nil {
+			if err := c.Visit(url); err != nil {
 				return
 			}
 		}(wg, url)
@@ -358,19 +341,27 @@ func (s *httpScrapper) startWorker(id string, jobIndexes <-chan int64) {
 		s.workerWG.Done()
 	}()
 
+	urlProxy, _ := netURL.Parse("socks5://69.252.50.229:1080")
+	//urlProxy, _ := netURL.Parse("http://182.160.108.188:8090")
+	client := http.Client{
+		Transport: &http.Transport{
+			Proxy: http.ProxyURL(urlProxy),
+		},
+		Timeout: 10 * time.Second,
+	}
+
 	//log.Printf("start worker %s", id)
 	for index := range jobIndexes {
 		//log.Printf("worker %s: got job: %d", id, index)
 		for _, area := range areas {
 			url := fmt.Sprintf(JobURL, area, index)
-			resp, err := http.Head(url)
+			resp, err := client.Head(url)
 			if err != nil {
 				log.Printf("unexpected error for head request for index %d: %s", index, err.Error())
 				time.Sleep(time.Second)
 
 				continue
 			}
-			//log.Println(resp.StatusCode)
 			if resp.StatusCode != 404 && !isSuccessStatus(resp.StatusCode) {
 				log.Printf("found unknown response status for index %d: %s", index, resp.Status)
 			}

@@ -26,6 +26,7 @@ services:
       CRAIGSLIST_DB_FIELD_NAME: url
       CRAIGSLIST_TELEGRAM_BOT_TOKEN: ${CRAIGSLIST_TELEGRAM_BOT_TOKEN}
       CRAIGSLIST_TELEGRAM_CHANNEL: ${CRAIGSLIST_TELEGRAM_CHANNEL}
+      CRAIGSLIST_PROXY_URL: ${CRAIGSLIST_PROXY_URL}
       CRAIGSLIST_START_TIME: "02:00PM"
       CRAIGSLIST_STOP_TIME: "07:00AM"
     logging:
@@ -33,6 +34,7 @@ services:
       options:
         max-size: "500m"
     command: go run main.go
+#    command: go test -v --count=1
 
 volumes:
   db_data: {}

@@ -4,21 +4,20 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"net/http"
 	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
-	netURL "net/url"
 
 	"github.com/gocolly/colly/v2"
+	"github.com/gocolly/colly/v2/extensions"
 )
 
 const (
 	SearchURL = "https://sfbay.craigslist.org/search/%s/%s"
 	JobURL    = "https://sfbay.craigslist.org/%s/cto/%d.html"
 
-	WorkerNumber = 40
+	WorkerNumber = 10
 	JobsNumber   = 3 * WorkerNumber
 
 	NotificationBufferSize = 10
@@ -86,11 +85,15 @@ type httpScrapper struct {
 	tickers      []*ticker
 	restartTimer *time.Timer
 
+	proxyURL string
+
 	sync.RWMutex
 }
 
-func New() Scrapper {
+func New(proxyURL string) Scrapper {
+	log.Println("creating scrapper with proxy", proxyURL)
 	return &httpScrapper{
+		proxyURL:         proxyURL,
 		quit:             make(chan struct{}),
 		notifications:    make(chan string, NotificationBufferSize),
 		jobIndexes:       make(chan int64, JobsNumber),
@@ -177,6 +180,10 @@ func (s *httpScrapper) SubscriptionChan() <-chan string {
 func (s *httpScrapper) GetLastIndex() (int64, error) {
 	var index int64
 	c := colly.NewCollector()
+	if err := c.SetProxy(s.proxyURL); err != nil {
+		return 0, err
+	}
+	extensions.RandomUserAgent(c)
 
 	c.OnHTML(".result-row", func(e *colly.HTMLElement) {
 		curIndexStr := e.Attr("data-pid")
@@ -199,8 +206,7 @@ func (s *httpScrapper) GetLastIndex() (int64, error) {
 			go func(wg *sync.WaitGroup, url string) {
 				defer wg.Done()
 
-				err := c.Visit(url)
-				if err != nil {
+				if err := c.Visit(url); err != nil {
 					return
 				}
 			}(wg, url)
@@ -341,40 +347,40 @@ func (s *httpScrapper) startWorker(id string, jobIndexes <-chan int64) {
 		s.workerWG.Done()
 	}()
 
-	urlProxy, _ := netURL.Parse("socks5://69.252.50.229:1080")
-	//urlProxy, _ := netURL.Parse("http://182.160.108.188:8090")
-	client := http.Client{
-		Transport: &http.Transport{
-			Proxy: http.ProxyURL(urlProxy),
-		},
-		Timeout: 10 * time.Second,
+	c := colly.NewCollector()
+	c.CheckHead = true
+	if err := c.SetProxy(s.proxyURL); err != nil {
+		panic(err)
 	}
+	extensions.RandomUserAgent(c)
 
 	//log.Printf("start worker %s", id)
 	for index := range jobIndexes {
 		//log.Printf("worker %s: got job: %d", id, index)
 		for _, area := range areas {
 			url := fmt.Sprintf(JobURL, area, index)
-			resp, err := client.Head(url)
+			//resp, err := client.Head(url)
+			err := c.Head(url)
 			if err != nil {
 				log.Printf("unexpected error for head request for index %d: %s", index, err.Error())
 				time.Sleep(time.Second)
 
 				continue
 			}
-			if resp.StatusCode != 404 && !isSuccessStatus(resp.StatusCode) {
-				log.Printf("found unknown response status for index %d: %s", index, resp.Status)
-			}
+			//log.Println(resp.StatusCode)
+			//if resp.StatusCode != 404 && !isSuccessStatus(resp.StatusCode) {
+			//	log.Printf("found unknown response status for index %d: %s", index, resp.Status)
+			//}
 
-			if isSuccessStatus(resp.StatusCode) {
-				log.Printf("worker %s: found url: %s", id, url)
-				s.notifications <- url
-				atomic.StoreInt64(&s.lastIndexFound, index)
-				s.resetTickers()
-				log.Printf("worker %s: ok", id)
+			//if isSuccessStatus(resp.StatusCode) {
+			log.Printf("worker %s: found url: %s", id, url)
+			s.notifications <- url
+			atomic.StoreInt64(&s.lastIndexFound, index)
+			s.resetTickers()
+			log.Printf("worker %s: ok", id)
 
-				break
-			}
+			break
+			//}
 		}
 		//log.Printf("worker %s: finish job: %d", id, index)
 	}

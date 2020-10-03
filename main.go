@@ -4,11 +4,12 @@ import (
 	"log"
 	"time"
 
+	notification_manager "github.com/boodyvo/craigslist/notification-manager"
+
 	"github.com/caarlos0/env"
 
 	_ "github.com/go-sql-driver/mysql"
 
-	notification_manager "github.com/boodyvo/craigslist/notification-manager"
 	"github.com/boodyvo/craigslist/scrapper"
 )
 
@@ -23,6 +24,7 @@ type Config struct {
 	TGChannels []string `env:"CRAIGSLIST_TELEGRAM_CHANNEL,required"`
 	StartTime  string   `env:"CRAIGSLIST_START_TIME,required"`
 	StopTime   string   `env:"CRAIGSLIST_STOP_TIME,required"`
+	ProxyURL   string   `env:"CRAIGSLIST_PROXY_URL,required"`
 }
 
 func stringToTime(str string) (time.Time, error) {
@@ -75,7 +77,7 @@ func main() {
 	}
 	defer tgbot.Stop()
 
-	craigslistScrapper := scrapper.New()
+	craigslistScrapper := scrapper.New(config.ProxyURL)
 	log.Println(craigslistScrapper.GetLastIndex())
 
 	notificationChanDB := craigslistScrapper.SubscriptionChan()

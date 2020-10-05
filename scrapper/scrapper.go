@@ -17,7 +17,7 @@ const (
 	SearchURL = "https://sfbay.craigslist.org/search/%s/%s"
 	JobURL    = "https://sfbay.craigslist.org/%s/cto/%d.html"
 
-	WorkerNumber = 10
+	WorkerNumber = 80
 	JobsNumber   = 3 * WorkerNumber
 
 	NotificationBufferSize = 10
@@ -356,23 +356,18 @@ func (s *httpScrapper) startWorker(id string, jobIndexes <-chan int64) {
 
 	//log.Printf("start worker %s", id)
 	for index := range jobIndexes {
-		//log.Printf("worker %s: got job: %d", id, index)
+		log.Printf("worker %s: got job: %d", id, index)
 		for _, area := range areas {
 			url := fmt.Sprintf(JobURL, area, index)
 			//resp, err := client.Head(url)
 			err := c.Head(url)
 			if err != nil {
-				log.Printf("unexpected error for head request for index %d: %s", index, err.Error())
+				//log.Printf(s"unexpected error for head request for index %d: %s", index, err.Error())
 				time.Sleep(time.Second)
 
 				continue
 			}
-			//log.Println(resp.StatusCode)
-			//if resp.StatusCode != 404 && !isSuccessStatus(resp.StatusCode) {
-			//	log.Printf("found unknown response status for index %d: %s", index, resp.Status)
-			//}
 
-			//if isSuccessStatus(resp.StatusCode) {
 			log.Printf("worker %s: found url: %s", id, url)
 			s.notifications <- url
 			atomic.StoreInt64(&s.lastIndexFound, index)
@@ -380,7 +375,6 @@ func (s *httpScrapper) startWorker(id string, jobIndexes <-chan int64) {
 			log.Printf("worker %s: ok", id)
 
 			break
-			//}
 		}
 		//log.Printf("worker %s: finish job: %d", id, index)
 	}
